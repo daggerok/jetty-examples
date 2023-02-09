@@ -1,0 +1,66 @@
+name: CI
+on:
+  workflow_dispatch:
+    inputs:
+      trigger:
+        description: Type m to triggre manual jobs
+        required: false
+        default: ''
+  pull_request:
+    branches: [ main, master ]
+  push:
+env:
+  JAVA_VERSION: 8
+jobs:
+  tests:
+    if: github.event.inputs.trigger == ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/cache@v3
+      id: ci
+      with:
+        path: |
+          ~/.npm
+          ~/.node
+          ~/.local
+          ~/.gradle
+          ~/.docker
+          ~/.m2/repository
+          !~/.m2/repository/com/gituhb/daggerok
+        key: ${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+    - uses: actions/setup-node@v3
+    - uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: ${{ env.JAVA_VERSION }}
+    - run: cd $GITHUB_WORKSPACE ; ./mvnw # -B dependency:resolve dependency:resolve-plugins
+  dependency-updates:
+    if: contains(github.event.inputs.trigger, 'M')
+      || startsWith(github.event.inputs.trigger, 'm')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - run: |
+        echo "Trigger: ${{ github.event.inputs.trigger }}"
+    - uses: actions/checkout@v3
+    - uses: actions/cache@v3
+      id: ci
+      with:
+        path: |
+          ~/.npm
+          ~/.node
+          ~/.local
+          ~/.gradle
+          ~/.docker
+          ~/.m2/repository
+          !~/.m2/repository/com/gituhb/daggerok
+        key: ${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
+    - uses: actions/setup-java@v3
+      with:
+        distribution: 'temurin'
+        java-version: ${{ env.JAVA_VERSION }}
+    - run: cd $GITHUB_WORKSPACE ; ./mvnw versions:display-plugin-updates
+    - run: cd $GITHUB_WORKSPACE ; ./mvnw versions:display-property-updates
+    - run: cd $GITHUB_WORKSPACE ; ./mvnw versions:display-parent-updates
